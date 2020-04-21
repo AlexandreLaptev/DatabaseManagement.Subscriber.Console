@@ -29,6 +29,7 @@ namespace DatabaseManagement.Subscriber.Console
                         services.AddMassTransit(config =>
                         {
                             config.AddConsumer<ProgressMessageConsumer>();
+                            config.AddConsumer<DatabaseUpdatedConsumer>();
                             config.AddBus(ConfigureBus);
                         });
 
@@ -53,16 +54,10 @@ namespace DatabaseManagement.Subscriber.Console
 
         static IBusControl ConfigureBus(IServiceProvider provider)
         {
-            string databaseUpdateTopic = "database-update";
-            string queueName = "database-update-subscriber";
-
             var rabbitMQBus = Bus.Factory.CreateUsingRabbitMq(busFactoryConfig =>
             {
-                // Specify the message ProgressMessage to be sent to a specific topic
-                busFactoryConfig.Message<ProgressMessage>(configTopology =>
-                {
-                    configTopology.SetEntityName(databaseUpdateTopic);
-                });
+                busFactoryConfig.Message<ProgressMessage>(configTopology => configTopology.SetEntityName("progress.message"));
+                busFactoryConfig.Message<DatabaseUpdated>(configTopology => configTopology.SetEntityName("database.updated"));
 
                 var host = busFactoryConfig.Host("localhost", "/", h =>
                 {
@@ -71,9 +66,11 @@ namespace DatabaseManagement.Subscriber.Console
                 });
 
                 // Setup RabbitMQ queue consumer
-                busFactoryConfig.ReceiveEndpoint(queueName, configurator =>
+                busFactoryConfig.ReceiveEndpoint("database-update-subscribers", configurator =>
                 {
+                    configurator.PrefetchCount = 1;
                     configurator.Consumer<ProgressMessageConsumer>(provider);
+                    configurator.Consumer<DatabaseUpdatedConsumer>(provider);
                 });
             });
 

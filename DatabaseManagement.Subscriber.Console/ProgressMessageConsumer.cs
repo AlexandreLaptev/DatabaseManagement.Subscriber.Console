@@ -18,7 +18,8 @@ namespace DatabaseManagement.Subscriber.Console
         {
             var message = context.Message.Message;
             var status = context.Message.Status;
-            _logger.LogInformation("Progress - Message: {@message}, Status: {@status}", message, status);
+            var consumerName = nameof(ProgressMessageConsumer);
+            _logger.LogInformation("Progress - Message: {@message}, Status: {@status} received by {@consumerName}", message, status, consumerName);
 
             return Task.CompletedTask;
         }
