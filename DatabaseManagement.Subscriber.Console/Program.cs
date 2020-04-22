@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
 using Serilog;
 using Serilog.Events;
 using DataManagement.MessageContracts;
@@ -54,15 +55,20 @@ namespace DatabaseManagement.Subscriber.Console
 
         static IBusControl ConfigureBus(IServiceProvider provider)
         {
+            var config = new ConfigurationBuilder()
+                    .SetBasePath(Environment.CurrentDirectory)
+                    .AddJsonFile("appsettings.json", optional: false)
+                    .Build();
+
             var rabbitMQBus = Bus.Factory.CreateUsingRabbitMq(busFactoryConfig =>
             {
                 busFactoryConfig.Message<UpdateProgress>(configTopology => configTopology.SetEntityName("database.updates.progress"));
                 busFactoryConfig.Message<UpdateCompleted>(configTopology => configTopology.SetEntityName("database.updates.completed"));
 
-                var host = busFactoryConfig.Host("localhost", "/", h =>
+                var host = busFactoryConfig.Host(config.GetValue<string>("rabbitMQ:host"), config.GetValue<string>("rabbitMQ:virtualHost"), h =>
                 {
-                    h.Username("guest");
-                    h.Password("guest");
+                    h.Username(config.GetValue<string>("rabbitMQ:UserName"));
+                    h.Password(config.GetValue<string>("rabbitMQ:password"));
                 });
 
                 // Setup RabbitMQ queue consumer
